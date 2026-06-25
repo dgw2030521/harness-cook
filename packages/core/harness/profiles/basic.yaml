@@ -1,0 +1,70 @@
+# harness-cook 基础 Profile
+# 适用于：个人项目、快速原型、低风险场景
+# 特点：最少约束、最快速度、仅核心安全检查
+#
+# 与 default Profile 的区别：
+#   - Gate 模式：LOOSE（仅记录，不阻断）
+#   - Hooks：仅启用 session_start 和 post_execute（最少干预）
+#   - Pipeline：3 步精简流程（分析→实现→提交）
+#   - 约束：仅保留最基本的安全约束
+#
+# 插槽分层说明见：docs/45-Slot分层映射表-20260616.md
+
+profile:
+  name: basic
+  description: 基础配置——最少约束，最快速度（适合个人项目和快速原型）
+
+agent:
+  adapter: claude-code
+
+pipeline:
+  agents: [analyst, coder, committer]
+  steps:
+    - name: analyze
+      skill: requirement-analysis
+
+    - name: implement
+      skill: code-generation
+
+    - name: commit
+      skill: auto-audit
+
+# ═══════════════════════════════════════════════════════════
+# Hooks 配置 —— 基础模式仅启用 2 个核心通道
+# ═══════════════════════════════════════════════════════════
+#
+# 理论通道插槽不在此配置文件中展示。
+# 如需使用其他核心/扩展通道，见 docs/45-Slot分层映射表-20260616.md
+#
+hooks:
+  session_start:        # 会话初始化（必需）
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+
+  post_execute:         # 审计记录（必需——合规底线）
+    - type: skill
+      skill_id: auto-audit
+
+gates:
+  # ─── LOOSE 模式：仅记录违规，不阻断执行 ─────────
+  default_mode: loose
+  checks:
+    - id: no-secrets          # 仍然检查硬编码密钥（安全底线）
+      enabled: true
+      severity: medium        # 降级为 medium——loose 模式不会阻断
+
+    - id: no-eval             # 仍然检查 eval/exec
+      enabled: true
+      severity: low           # 降级为 low——loose 模式仅记录
+
+constraints:
+  # ─── 最基本约束 ──────────────────────────────────
+  max_retries: 3              # 允许更多重试——宽松
+  max_tokens_per_node: 100000 # 节点 token 上限较宽
+  timeout_seconds: 600        # 更长的超时容忍
+
+spec_defaults:
+  # ─── 基础验收标准──仅保留核心底线 ────────────────
+  objective_template: "完成任务"
+  acceptance_criteria:
+    - "代码无明显错误"

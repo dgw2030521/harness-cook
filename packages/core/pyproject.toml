@@ -1,0 +1,155 @@
+[project]
+name = "harness-cook"
+version = "0.1.0"
+description = "Universal Agent Harness SDK — Agent 决策执行，Harness 稳定约束"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "harness-cook contributors"}]
+keywords = ["agent", "harness", "governance", "compliance", "guardrails", "ai-safety", "mcp", "claude-code"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Security",
+]
+dependencies = [
+    "pyyaml>=6.0",
+    "mcp>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/harness-cook/harness-cook"
+Repository = "https://github.com/harness-cook/harness-cook"
+Documentation = "https://github.com/harness-cook/harness-cook#readme"
+"Bug Tracker" = "https://github.com/harness-cook/harness-cook/issues"
+Changelog = "https://github.com/harness-cook/harness-cook/blob/master/CHANGELOG.md"
+
+[project.optional-dependencies]
+# 架构级规则的多语言 AST 解析能力（Python 用 stdlib ast，不需要额外依赖）
+# 安装方式: pip install harness-cook[frontend] 或 pip install harness-cook[all-languages]
+frontend = [
+    "tree-sitter>=0.21",
+    "tree-sitter-javascript>=0.21",
+    "tree-sitter-typescript>=0.21",
+]
+java = [
+    "tree-sitter>=0.21",
+    "tree-sitter-java>=0.21",
+]
+go = [
+    "tree-sitter>=0.21",
+    "tree-sitter-go>=0.21",
+]
+all-languages = [
+    "tree-sitter>=0.21",
+    "tree-sitter-javascript>=0.21",
+    "tree-sitter-typescript>=0.21",
+    "tree-sitter-java>=0.21",
+    "tree-sitter-go>=0.21",
+    "tree-sitter-rust>=0.21",
+    "tree-sitter-ruby>=0.21",
+    "tree-sitter-c>=0.21",
+    "tree-sitter-cpp>=0.21",
+    "tree-sitter-kotlin>=0.21",
+    "tree-sitter-json>=0.21",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+# ─── 治理集成总线：外部引擎可选依赖 ───
+# 每个引擎独立可选组——pip install harness-cook 不装任何外部引擎
+# 按治理层分组：护栏(guardrails) / 合规(compliance) / 审计(audit)
+# 护栏层
+guardrails = [
+    "guardrails-ai>=0.4",
+]
+nemo = [
+    "nemoguardrails>=0.7",
+]
+llama-guard = [
+    "transformers>=4.35",
+    "torch>=2.0",
+]
+helicone = [
+    "helicone>=1.0",
+]
+# 合规层
+sonarqube = [
+    "python-sonarqube-api>=1.0",
+]
+opa = [
+    "rego-python>=0.1",
+]
+archunit = [
+    # ArchUnit 是 Java jar——无需 Python 依赖，只需 JVM 环境
+    # 此组作为标记性依赖，确保 pyproject.toml 完整
+]
+dep-cruiser = [
+    # dependency-cruiser 是 JS CLI——无需 Python 依赖，只需 Node.js 环境
+    # 此组作为标记性依赖，确保 pyproject.toml 完整
+]
+# 审计层
+langfuse = [
+    "langfuse>=2.0",
+]
+arize = [
+    "arize-phoenix>=0.1",
+]
+datadog = [
+    "ddtrace>=2.0",
+]
+traceloop = [
+    "opentelemetry-api>=1.20",
+    "opentelemetry-sdk>=1.20",
+]
+# 元包——安装所有外部引擎 SDK（不含 JVM/Node.js 环境依赖）
+integrations = [
+    "guardrails-ai>=0.4",
+    "nemoguardrails>=0.7",
+    "transformers>=4.35",
+    "torch>=2.0",
+    "helicone>=1.0",
+    "python-sonarqube-api>=1.0",
+    "rego-python>=0.1",
+    "langfuse>=2.0",
+    "arize-phoenix>=0.1",
+    "ddtrace>=2.0",
+    "opentelemetry-api>=1.20",
+    "opentelemetry-sdk>=1.20",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["harness*"]
+
+[tool.setuptools.package-data]
+harness = ["profiles/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+markers = [
+    "deerflow: DeerFlow 编排平台集成测试",
+    "sonarqube: SonarQube 外部引擎集成测试",
+    "opa: OPA 实时策略评估引擎集成测试",
+    "archunit: ArchUnit Java 架构合规引擎集成测试",
+]
+
+[tool.harness]
+# harness-cook 自身配置示例
+project_name = "harness-cook"
+default_gate_mode = "hybrid"
+compliance_packs = ["security", "privacy"]
+learning_enabled = true

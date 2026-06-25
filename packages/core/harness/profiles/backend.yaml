@@ -1,0 +1,152 @@
+# harness-cook 后端开发者 Profile
+# 融合 API 契约、安全防护、错误兜底最佳实践
+#
+# 角色定位：
+#   - 契约先行：先定义接口/类型/协议契约，再写实现
+#   - 分层架构：Controller 只做参数校验和路由，业务逻辑在 Service，数据访问在 Repository/DAO
+#   - 安全防护：输入验证是默认动作，CORS/认证/限流按场景配置，异常不暴露内部细节
+#   - 错误兜底：所有 API 统一错误响应格式，禁止裸 throw，禁止空 catch
+#   - 可观测性：结构化日志代替 console.log，关键操作必须有日志
+#
+# 治理强度直接在 Profile 中定义（default_mode / constraints / severity），
+# 用户编辑 .harness/profiles/backend.yaml 即可调整。
+
+profile:
+  name: backend
+  description: 后端开发者配置——融合 API 契约、安全防护、错误兜底最佳实践
+
+agent:
+  adapter: claude-code
+
+pipeline:
+  agents: [analyst, coder, security-reviewer, validator, committer]
+  steps:
+    - name: analyze-requirement
+      skill: requirement-analysis
+      hooks_pre:
+        - type: script
+          command: "python3 packages/hooks/hook-session-init.py"
+
+    - name: implement-code
+      skill: code-generation
+      hooks_post:
+        - type: script
+          command: "python3 packages/hooks/hook-compliance-scan.py"
+
+    - name: security-review
+      skill: security-review
+      hooks_post:
+        - type: skill
+          skill_id: auto-audit
+
+    - name: validate
+      skill: auto-verify
+      hooks_pre:
+        - type: script
+          command: "python3 packages/hooks/hook-compliance-scan.py"
+
+    - name: commit
+      skill: auto-audit
+
+# ═══════════════════════════════════════════════════════════
+# Skill 插槽——后端角色专属 Skills
+# ═══════════════════════════════════════════════════════════
+#
+# 后端核心 Skills：
+#   - tdd:               测试驱动开发
+#   - security-review:    安全审查（注入、认证、权限）
+#   - auto-verify:       自动验证（契约一致性、API 规范）
+#   - auto-audit:        自动审计
+
+skill_slots:
+  coder:
+    pre_execute: [tdd]
+  security-reviewer:
+    pre_execute: [security-review]
+
+hooks:
+  # ─── 会话级 ───────────────────────────────────────────
+
+  # session_start: 注入后端开发核心原则
+  session_start:
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+    - type: prompt
+      message: >-
+        后端开发核心原则：
+        1. 分层架构——Controller 只做参数校验和路由，业务逻辑在 Service，数据访问在 Repository/DAO
+        2. 契约先行——先定义接口/类型/协议契约，再写实现。后端 API 必须有统一的请求/响应类型定义
+        3. 安全防护——输入验证是默认动作，异常不暴露内部实现细节（堆栈、SQL、配置）
+        4. 错误兜底——所有 API 统一错误响应格式（code/message/data），禁止裸 throw 到客户端，禁止空 catch
+        5. 可观测性——结构化日志代替 console.log，关键操作必须有日志（入口、出口、异常）
+
+  # ─── 任务级 ───────────────────────────────────────────
+
+  # post_execute: 审计记录 + 合规扫描
+  post_execute:
+    - type: skill
+      skill_id: auto-audit
+
+  # on_error: 错误记录 + 告警
+  on_error:
+    - type: script
+      command: "python3 packages/hooks/hook-compliance-scan.py"
+
+gates:
+  # ─── 后端角色专属门禁检查 ───────────────────────────────
+  #
+  # hybrid 模式：高严重性违规阻断，低严重性放行
+  # 可叠加 overlay 调节为 strict 或 loose
+  default_mode: hybrid
+  checks:
+    # ─── 安全（最高优先级）───────────────────────
+    - id: no-secrets              # 禁止硬编码密钥（API key、password、token）
+      enabled: true
+      severity: high
+
+    - id: no-eval                 # 禁止 eval/exec（防止代码注入）
+      enabled: true
+      severity: high
+
+    # ─── API 契约 ──────────────────────────────────
+    - id: require-api-contract    # 要求 API 有契约（请求/响应类型定义）
+      enabled: true
+      severity: medium
+
+    - id: require-error-handling  # 要求所有异步操作有错误处理
+      enabled: true
+      severity: medium
+
+    - id: require-structured-logging  # 要求关键操作有结构化日志
+      enabled: true
+      severity: low
+
+    # ─── 代码质量 ──────────────────────────────────
+    - id: no-debug-left           # 禁止遗留调试代码
+      enabled: true
+      severity: medium
+
+    - id: require-type-hints      # 要求类型标注
+      enabled: true
+      severity: medium
+
+    - id: require-docstrings      # 要求关键函数有文档字符串
+      enabled: true
+      severity: low
+
+constraints:
+  # ─── 后端角色约束 ──────────────────────────────────
+  # 后端改动通常集中在 Service/Repository，文件数较少但影响面大
+  max_files_modified: 3
+  max_tokens_per_node: 60000
+  timeout_seconds: 300
+
+spec_defaults:
+  # ─── 后端验收标准 ──────────────────────────────────
+  objective_template: "按后端最佳实践完成任务"
+  acceptance_criteria:
+    - "API 有契约（请求/响应类型定义）"
+    - "所有异步操作有错误兜底"
+    - "异常不暴露内部实现细节"
+    - "关键操作有结构化日志"
+    - "Controller 不含业务逻辑"

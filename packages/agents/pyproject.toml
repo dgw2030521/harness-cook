@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=45"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "harness-agents"
+version = "0.1.0"
+description = "Agent execution layer for harness-cook — ReAct loop, ToolExecutor, Coding agents, Orchestrator"
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+include = ["harness_agents*"]

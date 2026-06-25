@@ -1,0 +1,9 @@
+services:
+  harness-docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: harness-docs
+    ports:
+      - "80:80"
+    restart: unless-stopped

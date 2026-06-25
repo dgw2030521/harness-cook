@@ -1,0 +1,53 @@
+# Complete Workflow Profile
+# 完整的开发工作流自动化配置
+
+profile:
+  name: complete-workflow
+  description: 完整的开发工作流自动化（lint + test + codegraph + audit）
+
+agent:
+  adapter: claude-code
+
+pipeline:
+  agents: [coder]
+  steps:
+    - name: code-change
+      skill: code-generation
+
+hooks:
+  # 会话开始：初始化环境
+  session_start:
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+
+  # 工具使用后：执行完整工作流
+  post_tool_use:
+    # 1. 代码质量检查
+    - type: script
+      command: "python3 examples/lint-check/hook-lint-check.py"
+
+    # 2. 自动测试
+    - type: script
+      command: "python3 examples/auto-test/hook-auto-test.py"
+
+    # 3. CodeGraph 同步
+    - type: script
+      command: "python3 examples/codegraph-sync/hook-codegraph-sync.py"
+
+  # 任务执行后：审计记录
+  post_execute:
+    - type: skill
+      skill_id: auto-audit
+
+  # 会话结束：生成摘要
+  session_end:
+    - type: script
+      command: "python3 packages/hooks/hook-task-audit.py"
+
+gates:
+  default_mode: hybrid
+  checks:
+    - id: no-secrets
+      enabled: true
+    - id: no-eval
+      enabled: true

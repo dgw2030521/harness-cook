@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff check
+        # 初始以 advisory 模式启用：配置已就位（见 ruff.toml），
+        # 建议本地 `ruff check --fix` 修复存量后去掉 continue-on-error 转为强制
+        continue-on-error: true
+        run: ruff check .
+      - name: Ruff format check
+        continue-on-error: true
+        run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -e packages/core
+          pip install -e packages/cli
+
+      - name: Run core tests
+        working-directory: packages/core
+        run: pytest tests/ -v --tb=short
+
+      - name: Verify CLI install
+        run: |
+          python -c "import harness_cli; print('harness-cli importable')"
+          command -v harness && echo "harness command on PATH"
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+          pip install -e packages/core
+
+      - name: Run pip-audit
+        run: pip-audit --desc --strict

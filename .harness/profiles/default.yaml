@@ -1,0 +1,117 @@
+# harness-cook 默认 Profile
+# 切换此文件即可切换整套行为模式
+#
+# ═══════════════════════════════════════════════════════════
+# 插槽分层说明（E-8）
+# ═══════════════════════════════════════════════════════════
+#
+# 插槽分为三层：
+#   核心通道（5个）——默认启用、DAGEngine集成、生产必需
+#   扩展通道（2个）——可选启用、有真实hook脚本支持
+#   理论通道（10个）——仅存在于SkillSlotName枚举，无生产集成
+#
+# 本文件只展示核心+扩展通道（7行），理论通道见文档：
+#   docs/45-Slot分层映射表-20260616.md
+#
+# ═══════════════════════════════════════════════════════════
+
+profile:
+  name: default
+  description: 标准开发流程配置（推荐大多数项目使用）
+
+agent:
+  adapter: hermes  # 指定使用哪个 Agent 适配器（claude-code / openai / gemini / hermes）
+                   # hermes: 治理通过 MCP Server 实现，不支持原生 hooks
+                   # 不指定 model，模型由用户在自己的 Agent 中配置
+
+pipeline:
+  agents: [analyst, coder, reviewer, validator, committer]
+  steps:
+    - name: analyze-requirement
+      skill: requirement-analysis
+      hooks_pre:
+        - type: script
+          command: "python3 packages/hooks/hook-session-init.py"
+
+    - name: implement-code
+      skill: code-generation
+
+    - name: review-code
+      skill: auto-review
+      hooks_post:
+        - type: skill
+          skill_id: auto-audit
+
+    - name: validate
+      skill: auto-verify
+
+    - name: commit
+      skill: auto-audit
+
+# ═══════════════════════════════════════════════════════════
+# Hooks 配置 —— 只展示核心+扩展通道
+# ═══════════════════════════════════════════════════════════
+#
+# Hook 类型说明：
+#   - script: 直接执行 Python 脚本
+#     示例: { type: script, command: "python3 scripts/check.py" }
+#   - skill: 通过 Skill Registry 执行已注册的 Skill
+#     示例: { type: skill, skill_id: auto-audit }
+#   - prompt: 注入系统提示词（仅 session_start 支持）
+#     示例: { type: prompt, message: "注意安全检查" }
+#
+# 理论通道插槽（不在此配置文件中展示）：
+#   pre_tool_use / post_tool_use / on_file_change
+#   pre_commit / post_commit / on_delegate / on_conflict
+#   on_decision / user_prompt_submit
+#   如需使用，见 docs/45-Slot分层映射表-20260616.md
+#
+hooks:
+  # ─── 核心通道（默认启用）──────────────────────────────
+
+  session_start:        # 会话初始化——环境、配置、PYTHONPATH
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+
+  post_execute:         # 任务后审计——结果验证、审计记录 ⭐默认启用
+    - type: skill
+      skill_id: auto-audit
+
+  on_error:             # 异常处理——错误记录、自动恢复
+    - type: script
+      command: "python3 packages/hooks/hook-task-audit.py"
+
+  on_gate_pass:         # 门禁通过——部署、报告、标记完成
+    - type: skill
+      skill_id: auto-audit
+
+  on_gate_fail:         # 门禁失败——修复建议、升级人工
+    - type: skill
+      skill_id: auto-fix
+
+  # ─── 扩展通道（可选启用）──────────────────────────────
+
+  session_end:          # 会话结束——摘要、清理、审计报告
+    - type: script
+      command: "python3 packages/hooks/hook-task-audit.py"
+
+  pre_execute:          # 任务前检查——输入验证、权限、依赖
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+
+# ═══════════════════════════════════════════════════════════
+# Gates 配置
+# ═══════════════════════════════════════════════════════════
+#
+# 门禁模式：
+#   - strict:  所有检查必须通过，否则阻塞
+#   - hybrid:  高严重性违规阻断，低严重性放行（推荐）
+#   - loose:   仅记录违规，不阻断执行
+#
+gates:
+  default_mode: hybrid
+  checks:
+    - id: no-secrets          # 禁止硬编码密钥（API key、password 等）
+      enabled: true
+    - id: no-eval             # 禁止使用 eval/exec（防止代码注入）
+      enabled: true

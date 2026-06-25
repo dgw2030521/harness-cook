@@ -1,0 +1,54 @@
+# 多 Adapter 映射对比 Demo —— 共享 Profile
+#
+# 这一份 profile 会被 demo_multi_adapter.py 喂给所有已注册 adapter，
+# 用于并排对比"同一声明 → 不同平台映射/产出"。
+#
+# 故意保留 on_gate_pass / on_gate_fail 两个插槽：它们对不上 Claude Code
+# 的原生事件（Claude Code 没有"门禁通过/失败"事件），各 adapter 会以不同
+# 方式处理（claude-code 的 translate_hooks 跳过；hermes 降级为 custom_*；
+# openai 根本无此映射）——这正是本 demo 要展示的"映射 per-adapter 差异"。
+#
+# 注：本 demo 不初始化 SkillRegistry，故所有 skill_id（auto-audit/auto-fix）
+#     在此环境均未注册——框架会报 E-10 但 fail-open 继续（translate_hooks 仍产出
+#     指向 run-skill.py 的 entry，运行时才解析 skill）。本 demo 只展示"插槽映射"
+#     与"未知 hook_point 跳过"，不执行 skill，故 E-10 不影响对比结论（见 demo 开头预告）。
+
+profile:
+  name: multi-adapter-demo
+  description: 多 adapter 映射对比 demo 的共享 profile
+
+agent:
+  adapter: claude-code  # 默认 adapter；demo 会用 bridge.deploy(adapter_name=...) 显式覆盖
+
+hooks:
+  session_start:               # 会话初始化
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+
+  post_execute:                # 任务后审计
+    - type: skill
+      skill_id: auto-audit
+
+  on_error:                    # 异常处理
+    - type: script
+      command: "python3 packages/hooks/hook-task-audit.py"
+
+  on_gate_pass:                # 门禁通过（对不上 Claude Code 原生事件）
+    - type: skill
+      skill_id: auto-audit
+
+  on_gate_fail:                # 门禁失败（对不上 Claude Code 原生事件；auto-fix skill 未注册）
+    - type: skill
+      skill_id: auto-fix
+
+  pre_execute:                 # 任务前检查
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+
+gates:
+  default_mode: hybrid         # hybrid：高严重性阻断，低严重性放行
+  checks:
+    - id: no-secrets           # 禁止硬编码密钥
+      enabled: true
+    - id: no-eval              # 禁止 eval/exec
+      enabled: true

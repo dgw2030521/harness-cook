@@ -1,0 +1,97 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+*.egg
+
+# Node / VitePress
+node_modules/
+**/.vitepress/cache/
+**/.vitepress/dist/
+
+# Env & IDE
+.env
+.env.*
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+
+# Claude Code 项目配置：共享团队配置，忽略个人会话和本地配置
+
+# ✅ 保留并提交到 Git：
+# - .claude/context/          (共享上下文文档)
+# - .claude/prompts/          (共享提示词模板)
+#
+# ❌ 忽略（不提交）：
+# - .claude/settings.json     (本地 hooks 配置，含个人绝对路径，不团队共享)
+# - settings.local.json       (个人本地配置)
+# - sessions/                 (会话记录)
+# - cache/                    (缓存)
+# - *.jsonl                   (会话数据)
+
+# 忽略 Claude Code 本地配置和个人会话
+.claude/settings.json
+.claude/settings.local.json
+.claude/**/sessions/
+.claude/**/*.jsonl
+.claude/**/sessions-index.json
+.claude/**/cache/
+.claude/**/temp/
+.claude/**/logs/
+.claude/**/file-history/
+.claude/**/memory/
+
+# 忽略 vscode-claude 自动生成的本地权限、会话、缓存
+.claude/sessions/
+.claude/cache/
+.claude/logs/
+.claude/*.jsonl
+.claude/temp/
+
+# 忽略个人配置
+.vscode/settings.json.local
+
+# MCP 配置（个人本地配置）
+.mcp.json
+
+.ai/
+.nextx/
+
+# CodeGraph 本地数据（不应提交）
+.codegraph/
+
+.understand-anything
+# Harness: 运行时数据 gitignore，项目级配置不忽略
+# 运行时数据（不同开发者/不同运行环境不同）：
+.harness/session_id
+.harness/audit/
+# 项目级 profiles → 不 gitignore（团队可能想共享自定义 profile）
+# 内置 profiles 已移到 packages/core/harness/profiles/（随包分发，不属于 .harness/）
+
+# Python sub-packages
+packages/*/.venv/
+packages/*/dist/
+packages/*/*.egg-info/
+packages/*/.pytest_cache/
+
+# TypeScript SDK build
+packages/sdk-typescript/dist/
+
+# llm-bailian build
+packages/llm-bailian/*/*.egg-info/
+packages/llm-bailian/*/dist/
+
+# 文档（根目录的 docs，保留 docs/images 下的图片）
+/docs/*
+

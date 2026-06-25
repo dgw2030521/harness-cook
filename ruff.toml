@@ -1,0 +1,38 @@
+# Ruff 配置 — harness-cook
+# 文档: https://docs.astral.sh/ruff/configuration/
+
+target-version = "py310"
+line-length = 120
+extend-exclude = [
+    "node_modules",
+    ".git",
+    ".codegraph",
+    ".harness",
+    ".idea",
+    ".pytest_cache",
+    "playground/docs/.vitepress/cache",
+    "playground/docs/.vitepress/dist",
+    "**/dist",
+    "**/.venv",
+]
+
+[lint]
+# 默认启用 E/F（pycodestyle errors + Pyflakes）。按需增量启用，避免一次性引入大量告警使 CI 变红。
+select = [
+    "E",    # pycodestyle errors
+    "F",    # Pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort（import 顺序）
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear（常见陷阱）
+]
+ignore = [
+    "E501",   # 行长由 formatter 管，不重复报
+    "B008",   # 函数默认值中调用（如 Depends/Field 常见模式）
+]
+[lint.per-file-ignores]
+"packages/core/tests/*" = ["B011"]   # 测试中允许 assert False / pytest.fail
+
+[format]
+quote-style = "double"
+indent-style = "space"

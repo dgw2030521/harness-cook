@@ -1,0 +1,43 @@
+# 示例规则配置
+# 用于演示声明式规则系统
+
+rules:
+  # 规则 1: 禁止 TODO 注释
+  - id: no-todo-comments
+    category: style
+    severity: low
+    description: "不允许 TODO 注释"
+    checker: regex
+    config:
+      pattern: "\\bTODO\\b"
+      message: "Found TODO comment - please implement or remove"
+
+  # 规则 2: 禁止 eval/exec
+  - id: no-eval-exec
+    category: security
+    severity: critical
+    description: "禁止使用 eval/exec"
+    checker: eval_detection
+    config:
+      severity: critical
+
+  # 规则 3: 禁止硬编码密钥
+  - id: no-hardcoded-secrets
+    category: security
+    severity: critical
+    description: "禁止硬编码 API 密钥"
+    checker: secret_patterns
+    config:
+      patterns:
+        - "sk-[a-zA-Z0-9]{32,}"  # OpenAI API key
+        - "ghp_[a-zA-Z0-9]{36}"  # GitHub token
+
+  # 规则 4: 文件大小限制
+  - id: file-size-limit
+    category: style
+    severity: medium
+    description: "文件不超过 50 行（示例用较小值）"
+    checker: file_size
+    config:
+      max_lines: 50
+      severity: medium

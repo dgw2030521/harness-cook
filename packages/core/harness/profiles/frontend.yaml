@@ -1,0 +1,147 @@
+# harness-cook 前端开发者 Profile
+# 融合组件化、类型安全、性能意识最佳实践
+#
+# 角色定位：
+#   - 关注点分离：组件只做展示+交互，复杂逻辑抽 hooks/composables，API 调用抽 api 层
+#   - 类型契约：先定义 interface/type，再写实现，禁止 any 逃逸
+#   - 性能意识：懒加载、虚拟滚动、防抖节流、N+1 预防
+#   - 错误兜底：所有 async 有 catch/error boundary，关键交互有 fallback UI
+#
+# 治理强度直接在 Profile 中定义（default_mode / constraints / severity），
+# 用户编辑 .harness/profiles/frontend.yaml 即可调整。
+
+profile:
+  name: frontend
+  description: 前端开发者配置——融合组件化、类型安全、性能意识最佳实践
+
+agent:
+  adapter: claude-code
+
+pipeline:
+  agents: [analyst, coder, fe-reviewer, validator, committer]
+  steps:
+    - name: analyze-requirement
+      skill: requirement-analysis
+      hooks_pre:
+        - type: script
+          command: "python3 packages/hooks/hook-session-init.py"
+
+    - name: implement-code
+      skill: code-generation
+
+    - name: review-frontend
+      skill: code-review-fe
+      hooks_post:
+        - type: skill
+          skill_id: auto-audit
+
+    - name: validate
+      skill: auto-verify
+
+    - name: commit
+      skill: auto-audit
+
+# ═══════════════════════════════════════════════════════════
+# Skill 插槽——前端角色专属 Skills
+# ═══════════════════════════════════════════════════════════
+#
+# 前端核心 Skills：
+#   - vue-best-practices:    Vue 组件化最佳实践
+#   - next-best-practices:   Next.js SSR/SSG 最佳实践
+#   - frontend-design:       前端设计与设计 token
+#   - code-review-fe:        前端代码审查（关注组件拆分、状态管理、性能）
+#   - web-design-guidelines: Web 设计规范
+
+skill_slots:
+  coder:
+    pre_execute: [vue-best-practices, next-best-practices]
+  fe-reviewer:
+    pre_execute: [frontend-design]
+    post_execute: [web-design-guidelines]
+
+hooks:
+  # ─── 会话级 ───────────────────────────────────────────
+
+  # session_start: 注入前端开发核心原则
+  session_start:
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+    - type: prompt
+      message: >-
+        前端开发核心原则：
+        1. 关注点分离——组件只做展示+交互，复杂逻辑抽 hooks/composables/services，API 调用抽 api 层
+        2. 类型契约先行——先定义 interface/type，再写实现，禁止 any 逃逸
+        3. 性能意识——懒加载、虚拟滚动、防抖节流、N+1 预防、bundle size 关注
+        4. 错误兜底——所有 async 有 catch/error boundary，关键交互有 fallback UI
+        5. XSS 防护——不拼接 HTML、不信任用户输入
+
+  # ─── 任务级 ───────────────────────────────────────────
+
+  # post_execute: 审计记录（必需）
+  post_execute:
+    - type: skill
+      skill_id: auto-audit
+
+gates:
+  # ─── 前端角色专属门禁检查 ───────────────────────────────
+  #
+  # hybrid 模式：高严重性违规阻断，低严重性放行
+  # 可叠加 overlay 调节为 strict 或 loose
+  default_mode: hybrid
+  checks:
+    # ─── TypeScript/类型安全 ──────────────────────
+    - id: no-any-escape           # 禁止 TypeScript any 逃逸
+      enabled: true
+      severity: high
+
+    - id: require-type-hints      # 要求类型标注
+      enabled: true
+      severity: medium
+
+    # ─── 前端安全 ────────────────────────────────
+    - id: no-xss-risk             # 禁止 XSS 风险（v-html、innerHTML 等）
+      enabled: true
+      severity: high
+
+    - id: no-secrets              # 禁止硬编码密钥
+      enabled: true
+      severity: high
+
+    - id: no-eval                 # 禁止 eval/exec
+      enabled: true
+      severity: high
+
+    # ─── 前端代码质量 ──────────────────────────────
+    - id: no-console-log          # 禁止遗留 console.log
+      enabled: true
+      severity: medium
+
+    - id: no-hardcoded-colors     # 禁止硬编码颜色，走 design tokens
+      enabled: true
+      severity: low
+
+    - id: no-hardcoded-spacing    # 禁止硬编码间距，走设计系统阶梯值
+      enabled: true
+      severity: low
+
+    # ─── 前端性能 ────────────────────────────────
+    - id: bundle-size-check       # 检查 bundle size 合理性
+      enabled: true
+      severity: low
+
+constraints:
+  # ─── 前端角色约束 ──────────────────────────────────
+  # 前端改动通常涉及组件+样式+路由+类型，文件数偏多
+  max_files_modified: 8
+  max_tokens_per_node: 80000
+  timeout_seconds: 400
+
+spec_defaults:
+  # ─── 前端验收标准 ──────────────────────────────────
+  objective_template: "按前端最佳实践完成任务"
+  acceptance_criteria:
+    - "组件关注点分离（展示 vs 逻辑）"
+    - "无 TypeScript any 逃逸"
+    - "无 XSS 风险"
+    - "关键交互有错误兜底 UI"
+    - "颜色和间距走 design tokens"

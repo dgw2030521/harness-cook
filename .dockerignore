@@ -1,0 +1,48 @@
+# 版本控制
+.git/
+.gitattributes
+
+# IDE 和编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code 和 Harness 运行时
+.claude/
+.harness/
+.hypothesis_cache/
+
+# 依赖（构建时重新安装）
+node_modules/
+
+# Python 包（文档构建不需要）
+packages/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# VitePress 缓存（构建产物 dist 需要保留，用于 Docker 部署）
+playground/docs/.vitepress/cache/
+
+# Codegraph 索引
+.codegraph/
+
+# 示例和脚本（文档构建不需要）
+examples/
+scripts/
+skills/
+workflows/
+charts/
+install.sh
+
+# GitHub 配置
+.github/
+
+# 文档图片源文件（构建时已内联）
+docs/
+
+# 构建产物
+*.log
+*.tmp

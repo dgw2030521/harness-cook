@@ -1,0 +1,132 @@
+# harness-cook 产品经理 Profile
+# 融合 PRD 规范、验收标准、用例思维最佳实践
+#
+# 角色定位：
+#   - 验收标准驱动：PRD 必须有验收标准，可量化可验证
+#   - 用例思维：用例驱动需求拆解，覆盖核心场景和边界情况
+#   - 文档真实性：所有断言基于可验证事实，禁止虚构、禁止凭印象
+#   - 无歧义术语：禁止"尽快""较好"等模糊表述，一律量化
+#   - 痛点导向：从用户痛点出发定义需求，而非从技术出发
+#
+# 治理强度直接在 Profile 中定义（default_mode / constraints / severity），
+# 用户编辑 .harness/profiles/product.yaml 即可调整。
+
+profile:
+  name: product
+  description: 产品经理配置——融合 PRD 规范、验收标准、用例思维最佳实践
+
+agent:
+  adapter: claude-code
+
+pipeline:
+  agents: [analyst, prd-writer, validator, committer]
+  steps:
+    - name: analyze-requirement
+      skill: requirement-analysis
+      hooks_pre:
+        - type: script
+          command: "python3 packages/hooks/hook-session-init.py"
+
+    - name: write-prd
+      skill: to-prd
+
+    - name: validate-prd
+      skill: auto-verify
+
+    - name: commit
+      skill: auto-audit
+
+# ═══════════════════════════════════════════════════════════
+# Skill 插槽——产品角色专属 Skills
+# ═══════════════════════════════════════════════════════════
+#
+# 产品核心 Skills：
+#   - to-prd:           PRD 生成（需求→结构化 PRD）
+#   - usecase:          用例分析（场景拆解、边界覆盖）
+#   - to-issues:        PRD→Issue 拆解
+#   - grill-with-docs:  文档质询（交叉验证、事实核查）
+#   - grill-me:         自我质询（逻辑一致性检查）
+
+skill_slots:
+  analyst:
+    pre_execute: [usecase]
+  prd-writer:
+    pre_execute: [grill-with-docs]
+    post_execute: [grill-me]
+
+hooks:
+  # ─── 会话级 ───────────────────────────────────────────
+
+  # session_start: 注入产品工作核心原则
+  session_start:
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+    - type: prompt
+      message: >-
+        产品工作核心原则：
+        1. 验收标准驱动——PRD 必须有验收标准，可量化可验证
+        2. 用例思维——用例驱动需求拆解，覆盖核心场景和边界情况
+        3. 文档真实性——所有断言基于可验证事实，不确定→先搜索核实→再写入，禁止虚构
+        4. 无歧义术语——禁止"尽快""较好"等模糊表述，一律量化或弱化
+        5. 痛点导向——从用户痛点出发定义需求，而非从技术出发
+        6. 绝对断言一律弱化——"不支持"→"不原生支持但有降级方案"
+
+  # ─── 任务级 ───────────────────────────────────────────
+
+  # post_execute: 审计记录
+  post_execute:
+    - type: skill
+      skill_id: auto-audit
+
+gates:
+  # ─── 产品角色专属门禁检查 ───────────────────────────────
+  #
+  # hybrid 模式：高严重性违规阻断，低严重性放行
+  # 可叠加 overlay 调节为 strict 或 loose
+  default_mode: hybrid
+  checks:
+    # ─── 验收标准 ──────────────────────────────────
+    - id: require-acceptance-criteria  # 要求每个需求有验收标准
+      enabled: true
+      severity: high
+
+    # ─── 文档质量 ──────────────────────────────────
+    - id: no-ambiguous-terms     # 禁止歧义术语（"尽快""较好""大概"）
+      enabled: true
+      severity: medium
+
+    - id: no-unverified-claims   # 禁止未验证的断言
+      enabled: true
+      severity: medium
+
+    - id: no-absolute-assertions # 绝对断言必须弱化（"不支持"→"不原生支持但有降级方案"）
+      enabled: true
+      severity: low
+
+    # ─── 用例覆盖 ──────────────────────────────────
+    - id: require-usecase-coverage  # 要求用例覆盖核心场景和边界情况
+      enabled: true
+      severity: medium
+
+    # ─── 安全底线 ──────────────────────────────────
+    - id: no-secrets              # 禁止硬编码密钥（即使是文档示例）
+      enabled: true
+      severity: high
+
+constraints:
+  # ─── 产品角色约束 ──────────────────────────────────
+  # 产品文档改动通常涉及 PRD + 用例 + 验收标准，文件数适中
+  # 产品工作需要更多思考时间，超时容忍度稍高
+  max_files_modified: 5
+  max_tokens_per_node: 80000
+  timeout_seconds: 600
+
+spec_defaults:
+  # ─── 产品验收标准 ──────────────────────────────────
+  objective_template: "按产品最佳实践完成任务"
+  acceptance_criteria:
+    - "PRD 有验收标准（可量化可验证）"
+    - "无歧义术语（如'尽快'、'较好'）"
+    - "所有断言基于可验证事实"
+    - "用例覆盖核心场景和边界情况"
+    - "绝对断言一律弱化"

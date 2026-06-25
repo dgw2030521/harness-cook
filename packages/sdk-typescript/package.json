@@ -1,0 +1,42 @@
+{
+  "name": "harness-sdk",
+  "version": "0.1.0",
+  "description": "Universal Agent Harness SDK — Agent 决策执行，Harness 稳定约束 (TypeScript)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "agent",
+    "harness",
+    "compliance",
+    "guardrails",
+    "sdk",
+    "ai-safety"
+  ],
+  "author": "harness-cook contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/harness-cook/harness-cook#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/harness-cook/harness-cook",
+    "directory": "packages/sdk-typescript"
+  },
+  "bugs": {
+    "url": "https://github.com/harness-cook/harness-cook/issues"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.19.43",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

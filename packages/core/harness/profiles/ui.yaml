@@ -1,0 +1,133 @@
+# harness-cook UI 设计师 Profile
+# 融合设计规范、token 化、响应式最佳实践
+#
+# 角色定位：
+#   - Token 化：颜色、间距、字号走 design tokens，禁止硬编码
+#   - 响应式优先：布局优先响应式，覆盖主要断点
+#   - 组件复用：UI 组件有可复用性，避免一次性组件
+#   - 视觉一致性：间距使用设计系统定义的阶梯值，字号使用预定义层级
+#   - 交互反馈：关键交互有视觉反馈（hover/active/loading/error）
+#
+# 治理强度直接在 Profile 中定义（default_mode / constraints / severity），
+# 用户编辑 .harness/profiles/ui.yaml 即可调整。
+
+profile:
+  name: ui
+  description: UI 设计师配置——融合设计规范、token 化、响应式最佳实践
+
+agent:
+  adapter: claude-code
+
+pipeline:
+  agents: [analyst, design-reviewer, validator, committer]
+  steps:
+    - name: analyze-requirement
+      skill: requirement-analysis
+      hooks_pre:
+        - type: script
+          command: "python3 packages/hooks/hook-session-init.py"
+
+    - name: design-review
+      skill: frontend-design
+
+    - name: validate
+      skill: auto-verify
+
+    - name: commit
+      skill: auto-audit
+
+# ═══════════════════════════════════════════════════════════
+# Skill 插槽——UI 角色专属 Skills
+# ═══════════════════════════════════════════════════════════
+#
+# UI 核心 Skills：
+#   - frontend-design:     前端设计与设计系统
+#   - web-design-guidelines: Web 设计规范（布局、色彩、字体）
+#   - vision:              视觉识别（图片→描述、设计稿解析）
+#   - architecture:        架构图绘制（系统层级可视化）
+
+skill_slots:
+  design-reviewer:
+    pre_execute: [web-design-guidelines]
+    post_execute: [vision]
+
+hooks:
+  # ─── 会话级 ───────────────────────────────────────────
+
+  # session_start: 注入 UI 设计核心原则
+  session_start:
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+    - type: prompt
+      message: >-
+        UI 设计核心原则：
+        1. Token 化——颜色、间距、字号走 design tokens，禁止硬编码数值
+        2. 响应式优先——布局优先响应式，覆盖主要断点（mobile/tablet/desktop）
+        3. 组件复用——UI 组件有可复用性，避免一次性组件，提炼可复用 pattern
+        4. 视觉一致性——间距使用设计系统阶梯值，字号使用预定义层级（heading/body/caption）
+        5. 交互反馈——关键交互有视觉反馈（hover/active/loading/error state）
+        6. 可访问性——色对比度满足 WCAG AA，交互元素有键盘支持
+
+  # ─── 任务级 ───────────────────────────────────────────
+
+  # post_execute: 审计记录
+  post_execute:
+    - type: skill
+      skill_id: auto-audit
+
+gates:
+  # ─── UI 角色专属门禁检查 ───────────────────────────────
+  #
+  # hybrid 模式：高严重性违规阻断，低严重性放行
+  # 可叠加 overlay 调节为 strict 或 loose
+  default_mode: hybrid
+  checks:
+    # ─── 设计 Token 化 ──────────────────────────────
+    - id: require-design-tokens     # 要求颜色和间距走 design tokens
+      enabled: true
+      severity: medium
+
+    - id: no-hardcoded-colors       # 禁止硬编码颜色值（#fff、rgb(0,0,0) 等）
+      enabled: true
+      severity: high
+
+    - id: no-hardcoded-spacing      # 禁止硬编码间距值（margin: 20px 等）
+      enabled: true
+      severity: medium
+
+    - id: no-hardcoded-font-size    # 禁止硬编码字号（font-size: 14px 等）
+      enabled: true
+      severity: low
+
+    # ─── 响应式 ──────────────────────────────────
+    - id: require-responsive-coverage  # 要求覆盖主要断点
+      enabled: true
+      severity: medium
+
+    # ─── 可访问性 ──────────────────────────────────
+    - id: wcag-aa-color-contrast   # 色对比度满足 WCAG AA
+      enabled: true
+      severity: medium
+
+    # ─── 安全底线 ──────────────────────────────────
+    - id: no-secrets              # 禁止硬编码密钥
+      enabled: true
+      severity: high
+
+constraints:
+  # ─── UI 角色约束 ──────────────────────────────────
+  # UI 改动通常涉及组件+样式+token+布局，文件数偏多
+  # UI 工作注重快速迭代，超时稍短
+  max_files_modified: 10
+  max_tokens_per_node: 80000
+  timeout_seconds: 300
+
+spec_defaults:
+  # ─── UI 验收标准 ──────────────────────────────────
+  objective_template: "按 UI 设计最佳实践完成任务"
+  acceptance_criteria:
+    - "颜色和间距走 design tokens"
+    - "响应式覆盖主要断点"
+    - "关键交互有视觉反馈"
+    - "组件有可复用性"
+    - "色对比度满足 WCAG AA"

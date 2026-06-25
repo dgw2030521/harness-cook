@@ -1,0 +1,110 @@
+# ═══════════════════════════════════════════════════════════════════
+#  harness-cook 示例 DAG 工作流 YAML
+#
+#  本文件定义了一个 3节点 DAG 工作流: 分析→编码→验证
+#
+#  使用方式:
+#    1. CLI:   harness plan playground/demo_workflow.yaml
+#    2. CLI:   harness run playground/demo_workflow.yaml
+#    3. MCP:   harness_plan / harness_run 工具的 workflow_yaml 参数
+#    4. Python: 传入 DAGEngine 或 ComplianceEngine
+#
+#  注意:
+#    - harness CLI 和 MCP Server 解析 YAML 需要 PyYAML 库
+#    - 安装: pip install pyyaml
+#    - 如果没有 PyYAML，MCP Server 的 harness_plan/harness_run 将不可用
+#    - 但 DAGEngine 可以直接使用 Python API 构建工作流（见 demo_basic.py）
+# ═══════════════════════════════════════════════════════════════════
+
+# ── 工作流基本信息 ──────────────────────────────────────────────────
+id: wf-analyze-code-verify          # 工作流唯一标识
+name: "分析-编码-验证工作流"          # 工作流名称（中文友好）
+description: "从需求分析到代码实现再到安全验证的完整开发流程"
+
+# ── DAG 节点定义 ──────────────────────────────────────────────────
+# 每个节点代表一个可执行的任务单元，由对应 agent_type 的 Agent 执行
+
+nodes:
+  # ── 节点1: 需求分析 ────────────────────────────────────
+  - id: analyze                     # 节点唯一ID
+    agent_type: analyst             # 对应 Registry 中的 analyst Agent
+    task: "分析用户登录功能的需求，评估影响范围和改动点"  # 任务描述
+    inputs: []                      # 入口节点，无上游输入
+    outputs: []                     # outputs 仅用于标注，拓扑排序依赖 edges
+
+  # ── 节点2: 代码编码 ────────────────────────────────────
+  - id: code                        # 节点唯一ID
+    agent_type: coder               # 对应 Registry 中的 coder Agent
+    task: "根据分析报告实现用户登录功能的代码"  # 任务描述
+    inputs: []                      # 不在 inputs 中声明依赖（避免与 edges 重复计入度）
+    outputs: []                     # outputs 仅用于标注
+
+  # ── 节点3: 代码验证 ────────────────────────────────────
+  - id: verify                      # 节点唯一ID
+    agent_type: validator           # 对应 Registry 中的 validator Agent
+    task: "验证登录代码的安全性和合规性，输出验证报告"  # 任务描述
+    inputs: []                      # 不在 inputs 中声明依赖（避免与 edges 重复计入度）
+    outputs: []                     # 终止节点
+
+# ── DAG 边定义 ──────────────────────────────────────────────────
+# 边定义节点间的连接关系，可带条件表达式
+
+edges:
+  # ── 边1: 分析 → 编码 ────────────────────────────────
+  - from_node: analyze              # 起始节点ID
+    to_node: code                   # 目标节点ID
+    # condition 可选，支持简化条件表达式:
+    #   "success:analyze" → 上游节点成功时才执行（默认行为）
+    #   "failure:analyze" → 上游节点失败时才执行
+    #   null / 不设 → 总是执行
+    condition: null                  # 无条件，analyze 完成后自动进入 code
+
+  # ── 边2: 编码 → 验证 ────────────────────────────────
+  - from_node: code                 # 起始节点ID
+    to_node: verify                 # 目标节点ID
+    condition: "success:code"        # 条件: code 成功才进入 verify
+
+# ── 全局质量门禁（可选）─────────────────────────────────────────
+# 如果定义了 global_gate，工作流执行结束后会对所有产出物做一次全局检查
+
+global_gate:
+  id: gate-global-quality           # 门禁ID
+  mode: hybrid                      # 门禁模式: strict / hybrid / loose
+  max_retries: 3                    # 最大重试次数
+  checks:                           # 检查项列表
+    - id: chk-security-scan         # 检查项ID
+      category: security            # 类别
+      severity: critical            # 严重性
+      description: "全局安全扫描——检查所有产出物是否含有硬编码密钥"
+
+    - id: chk-pii-check            # 检查项ID
+      category: privacy             # 类别
+      severity: high                # 严重性
+      description: "全局隐私检查——确保产出物不泄露PII信息"
+
+    - id: chk-code-quality         # 检查项ID
+      category: style               # 类别
+      severity: medium              # 严重性
+      description: "全局代码质量检查——确保代码符合编码规范"
+
+# ── 节点级门禁（可选，每个节点可以有自己的门禁）─────────────────
+# 在 nodes 中添加 gate 字段即可，示例:
+#
+# nodes:
+#   - id: code
+#     agent_type: coder
+#     task: "..."
+#     inputs: [analyze]
+#     outputs: [verify]
+#     gate:
+#       id: gate-code-safety
+#       mode: strict
+#       checks:
+#         - id: chk-no-eval
+#           category: security
+#           severity: critical
+#           description: "代码中不能使用 eval()"
+#         - id: chk-no-hardcoded-secret
+#           category: security
+#           severity: critical
+#           description: "不能有硬编码密钥"

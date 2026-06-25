@@ -1,0 +1,104 @@
+{
+  "name": "harness-cook-vscode",
+  "displayName": "Harness Cook - AI Agent Compliance",
+  "description": "VS Code extension for harness-cook compliance scanning, audit chain verification, and dependency visualization",
+  "version": "0.1.0",
+  "publisher": "harness-cook",
+  "license": "MIT",
+  "homepage": "https://github.com/harness-cook/harness-cook#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/harness-cook/harness-cook",
+    "directory": "packages/vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/harness-cook/harness-cook/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:python",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:java",
+    "onLanguage:go",
+    "onLanguage:rust",
+    "onLanguage:ruby",
+    "onLanguage:cpp",
+    "onLanguage:kotlin",
+    "onLanguage:swift",
+    "onLanguage:dart",
+    "onLanguage:php",
+    "onLanguage:scala",
+    "onLanguage:lua"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "harness-cook.scan",
+        "title": "Harness Cook: Scan Compliance"
+      },
+      {
+        "command": "harness-cook.showAuditChain",
+        "title": "Harness Cook: Verify Audit Chain"
+      },
+      {
+        "command": "harness-cook.showDependencyGraph",
+        "title": "Harness Cook: Show Dependency Graph"
+      },
+      {
+        "command": "harness-cook.showCallGraph",
+        "title": "Harness Cook: Show Call Graph"
+      },
+      {
+        "command": "harness-cook.taintAnalysis",
+        "title": "Harness Cook: Taint Analysis"
+      },
+      {
+        "command": "harness-cook.rollbackSnapshot",
+        "title": "Harness Cook: Create Rollback Snapshot"
+      },
+      {
+        "command": "harness-cook.rollbackRestore",
+        "title": "Harness Cook: Restore from Snapshot"
+      }
+    ],
+    "configuration": {
+      "title": "Harness Cook",
+      "properties": {
+        "harness-cook.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8765",
+          "description": "Harness Cook dashboard server URL"
+        },
+        "harness-cook.scanOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run compliance scan on file save"
+        },
+        "harness-cook.gateMode": {
+          "type": "string",
+          "enum": ["strict", "hybrid", "loose"],
+          "default": "hybrid",
+          "description": "Gate enforcement mode"
+        },
+        "harness-cook.severityThreshold": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "default": "medium",
+          "description": "Minimum severity to show diagnostics"
+        }
+      }
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/vscode": "^1.85.0"
+  }
+}

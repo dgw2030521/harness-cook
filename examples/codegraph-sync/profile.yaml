@@ -1,0 +1,48 @@
+# codegraph-sync 示例 Profile
+#
+# 此 Profile 演示如何在代码变更后自动执行 codegraph sync，
+# 保持代码图谱与源代码同步。
+#
+# 使用场景：
+# - 使用 Write/Edit 工具修改代码文件后
+# - 自动触发 codegraph sync 更新代码图谱
+# - 无需手动执行，保持图谱实时同步
+
+profile:
+  name: codegraph-sync
+  description: 代码变更后自动同步 CodeGraph
+
+agent:
+  adapter: claude-code
+
+pipeline:
+  agents: [coder]
+  steps:
+    - name: code-change
+      skill: code-generation
+
+# ═══ Hooks 配置 ═══
+hooks:
+  # 会话开始：初始化
+  session_start:
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+
+  # 工具使用后：检查是否需要 codegraph sync
+  # 使用 matcher 过滤 Write/Edit 工具
+  post_tool_use:
+    - type: script
+      command: "python3 examples/codegraph-sync/hook-codegraph-sync.py"
+      # matcher: "Write|Edit"  # Claude Code 会自动传递 tool_name
+
+  # 会话结束：审计
+  session_end:
+    - type: script
+      command: "python3 packages/hooks/hook-task-audit.py"
+
+# ═══ Gates 配置 ═══
+gates:
+  default_mode: hybrid
+  checks:
+    - id: no-secrets
+      enabled: true

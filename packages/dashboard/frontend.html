@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>harness-cook Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--text2:#8b949e;--accent:#f0883e;--accent2:#da3633;--green:#3fb950;--yellow:#d29922;--blue:#58a6ff;--purple:#bc8cff}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+a{color:var(--blue);text-decoration:none}
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--card)}
+.header h1{font-size:20px;font-weight:600;color:var(--accent)}
+.header h1 span{color:var(--text2);font-weight:400;font-size:14px;margin-left:8px}
+.header .status{font-size:13px;color:var(--text2)}
+.header .status .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.header .status .dot.ok{background:var(--green)}
+.header .status .dot.err{background:var(--accent2)}
+.header .status .dot.warn{background:#f0ad4e}
+.tabs{display:flex;padding:0 24px;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto}
+.tabs button{padding:10px 18px;background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tabs button:hover{color:var(--text)}
+.tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.content{padding:24px;max-width:1400px;margin:0 auto}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
+.card .label{font-size:12px;color:var(--text2);margin-bottom:4px}
+.card .value{font-size:28px;font-weight:700;color:var(--text)}
+.card .value.green{color:var(--green)}
+.card .value.yellow{color:var(--yellow)}
+.card .value.red{color:var(--accent2)}
+.card .sub{font-size:12px;color:var(--text2);margin-top:4px}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:24px}
+.table-wrap .thead{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-wrap .thead h3{font-size:14px;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 16px;font-size:12px;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border);background:var(--bg)}
+td{padding:10px 16px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover{background:rgba(240,136,62,.05)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500}
+.badge.green{background:rgba(63,185,80,.15);color:var(--green)}
+.badge.yellow{background:rgba(210,153,34,.15);color:var(--yellow)}
+.badge.red{background:rgba(218,54,51,.15);color:var(--accent2)}
+.badge.blue{background:rgba(88,166,255,.15);color:var(--blue)}
+.badge.purple{background:rgba(188,140,255,.15);color:var(--purple)}
+.badge.accent{background:rgba(240,136,62,.15);color:var(--accent)}
+.search-bar{display:flex;gap:12px;margin-bottom:16px}
+.search-bar input,.search-bar select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:14px}
+.search-bar input{flex:1}
+.search-bar button{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:14px;cursor:pointer}
+.search-bar button:hover{background:#e07a2e}
+.event-stream{display:flex;flex-direction:column;gap:8px}
+.event-item{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:6px}
+.event-item .time{font-size:11px;color:var(--text2);white-space:nowrap;min-width:80px}
+.event-item .etype{font-size:11px;min-width:60px}
+.event-item .edata{font-size:13px;flex:1}
+.scan-area{display:flex;flex-direction:column;gap:12px}
+.scan-area textarea{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;color:var(--text);font-size:14px;min-height:120px;resize:vertical}
+.scan-area .result-list{display:flex;flex-direction:column;gap:8px}
+.scan-area .result-item{padding:12px;background:var(--card);border:1px solid var(--border);border-radius:6px}
+.scan-area .result-item .rid{font-size:13px;font-weight:600;color:var(--accent)}
+.scan-area .result-item .rsev{font-size:12px;margin-top:4px}
+.scan-area .result-item .rfind{font-size:13px;margin-top:6px;color:var(--text)}
+.loading{text-align:center;padding:40px;color:var(--text2)}
+.empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px}
+.chart-box h3{font-size:14px;font-weight:600;margin-bottom:12px}
+canvas{max-width:100%}
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:100;justify-content:center;align-items:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:10px;width:90%;max-width:800px;max-height:85vh;overflow-y:auto;padding:24px}
+.modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px}
+.modal-header h2{font-size:16px;color:var(--accent)}
+.modal-close{background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:0 4px}
+.modal-close:hover{color:var(--text)}
+.modal-section{margin-bottom:16px}
+.modal-section h4{font-size:13px;color:var(--text2);margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px}
+.modal-section pre{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;color:var(--text)}
+.modal-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text2)}
+.modal-meta span{background:var(--bg);padding:4px 10px;border-radius:4px}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:rgba(240,136,62,.1)}
+@media(max-width:768px){.grid{grid-template-columns:1fr 1fr}.content{padding:12px}.search-bar{flex-wrap:wrap}}
+@media(max-width:480px){.grid{grid-template-columns:1fr}.tabs button{padding:8px 12px;font-size:13px}}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>harness-cook <span>Dashboard</span></h1>
+<div class="header-project" id="headerProject" style="font-size:13px;color:var(--text2);margin:0 16px"></div>
+<div class="status"><span class="dot ok" id="healthDot"></span><span id="healthText">连接中...</span></div>
+</div>
+<div class="tabs">
+<button class="active" onclick="switchTab('overview')">概览</button>
+<button onclick="switchTab('audit')">审计</button>
+<button onclick="switchTab('agents')">Agent</button>
+<button onclick="switchTab('skills')">Skills</button>
+<button onclick="switchTab('profiles')">Profile</button>
+<button onclick="switchTab('hooks')">Hooks</button>
+<button onclick="switchTab('compliance')">合规</button>
+<button onclick="switchTab('gates')">门禁</button>
+<button onclick="switchTab('events')">事件流</button>
+<button onclick="switchTab('knowledge')">知识</button>
+</div>
+<div class="content">
+<!-- 概览 -->
+<div class="tab-panel active" id="panel-overview">
+<div class="grid" id="statsGrid"></div>
+<div class="grid" style="grid-template-columns:1fr 1fr">
+<div class="chart-box" style="margin-bottom:0"><h3>Hook 执行分布</h3><canvas id="chartHooks" height="120"></canvas></div>
+<div class="chart-box" style="margin-bottom:0"><h3>Gate 通过率</h3><canvas id="chartGates" height="120"></canvas></div>
+</div>
+</div>
+<!-- 审计 -->
+<div class="tab-panel" id="panel-audit">
+<div class="search-bar">
+<input id="auditQuery" placeholder="搜索关键词..." value="">
+<select id="auditAgent"><option value="">全部 Agent</option></select>
+<button onclick="searchAudit()">搜索</button>
+</div>
+<div class="table-wrap"><div class="thead"><h3>审计记录</h3><span id="auditCount">0 条</span></div>
+<table><thead><tr><th>时间</th><th>Session</th><th>Agent</th><th>任务</th><th>结果</th></tr></thead><tbody id="auditBody"></tbody></table></div>
+</div>
+<!-- Agent -->
+<div class="tab-panel" id="panel-agents">
+<div class="table-wrap"><div class="thead"><h3>已注册 Agent</h3><span id="agentCount">0</span></div>
+<table><thead><tr><th>ID</th><th>名称</th><th>角色</th><th>能力</th><th>就绪</th><th>最近活动</th></tr></thead><tbody id="agentBody"></tbody></table></div>
+</div>
+<!-- Skills -->
+<div class="tab-panel" id="panel-skills">
+<div class="grid" id="skillsStats"></div>
+<div class="table-wrap"><div class="thead"><h3>已注册 Skills</h3><span id="skillCount">0</span></div>
+<table><thead><tr><th>ID</th><th>名称</th><th>插槽</th><th>标签</th><th>状态</th><th>执行次数</th><th>错误次数</th></tr></thead><tbody id="skillBody"></tbody></table></div>
+<div class="table-wrap" style="margin-top:24px"><div class="thead"><h3>插槽分配</h3></div>
+<div id="slotMap" style="padding:16px"></div>
+</div>
+</div>
+<!-- Profile -->
+<div class="tab-panel" id="panel-profiles">
+<div class="card" style="margin-bottom:24px">
+<div class="label">当前 Profile</div>
+<div class="value" id="currentProfile" style="font-size:20px">-</div>
+<div class="sub" id="profileDesc">-</div>
+</div>
+<div class="grid" id="profileStats"></div>
+<div class="table-wrap"><div class="thead"><h3>Hooks 配置</h3></div>
+<table><thead><tr><th>Hook 点</th><th>类型</th><th>命令/Skill</th><th>来源</th></tr></thead><tbody id="hooksBody"></tbody></table></div>
+<div class="table-wrap" style="margin-top:24px"><div class="thead"><h3>Gate 配置</h3></div>
+<table><thead><tr><th>检查项</th><th>启用</th></tr></thead><tbody id="gatesBody"></tbody></table></div>
+</div>
+<!-- Hooks -->
+<div class="tab-panel" id="panel-hooks">
+<div class="grid" id="hookStats"></div>
+<div class="search-bar">
+<select id="hookTypeFilter">
+<option value="">全部类型</option>
+<option value="session">SessionStart</option>
+<option value="stop">Stop</option>
+<option value="post">PostToolUse</option>
+</select>
+<button onclick="loadHookExecutions()">刷新</button>
+</div>
+<div class="table-wrap"><div class="thead"><h3>Hook 执行历史</h3><span id="hookExecCount">0 条</span></div>
+<table><thead><tr><th>时间</th><th>Session</th><th>Hook</th><th>类型</th><th>状态</th><th>耗时</th><th>触发来源</th></tr></thead><tbody id="hookExecBody"></tbody></table></div>
+</div>
+<!-- 合规 -->
+<div class="tab-panel" id="panel-compliance">
+<div class="scan-area">
+<strong>合规扫描</strong>
+<textarea id="scanInput" placeholder="粘贴代码或文本内容进行合规扫描..."></textarea>
+<div class="search-bar">
+<select id="scanCat"><option value="security,privacy">安全+隐私</option><option value="security">安全</option><option value="privacy">隐私</option><option value="style">编码风格</option><option value="architecture">架构</option></select>
+<button onclick="runScan()">扫描</button>
+</div>
+<div class="result-list" id="scanResults"></div>
+</div>
+<div class="table-wrap" style="margin-top:24px"><div class="thead"><h3>规则包</h3></div>
+<table><thead><tr><th>包名</th><th>类别</th><th>规则数</th><th>规则ID</th><th>严重性</th><th>描述</th><th>可自动修复</th></tr></thead><tbody id="rulesBody"></tbody></table></div>
+</div>
+<!-- 门禁 -->
+<div class="tab-panel" id="panel-gates">
+<div class="table-wrap"><div class="thead"><h3>门禁历史</h3></div>
+<table><thead><tr><th>时间</th><th>Session</th><th>门禁</th><th>模式</th><th>结果</th></tr></thead><tbody id="gateBody"></tbody></table></div>
+</div>
+<!-- 事件流 -->
+<div class="tab-panel" id="panel-events">
+<div class="search-bar">
+<select id="evtType"><option value="">全部类型</option><option value="task_started">任务开始</option><option value="task_completed">任务完成</option><option value="task_failed">任务失败</option><option value="gate_checked">门禁检查</option><option value="compliance_scan">合规扫描</option><option value="agent_registered">Agent注册</option></select>
+<button onclick="loadEvents()">刷新</button>
+</div>
+<div class="event-stream" id="eventStream"></div>
+</div>
+<!-- 知识 -->
+<div class="tab-panel" id="panel-knowledge">
+<div class="grid" id="knowledgeStatsGrid"></div>
+<div class="search-bar">
+<input id="knowledgeQuery" placeholder="搜索知识..." value="">
+<select id="knowledgeType"><option value="">全部类型</option><option value="architecture">架构</option><option value="convention">约定</option><option value="dependency">依赖</option><option value="api">API</option><option value="pattern">模式</option><option value="risk">风险</option><option value="decision">决策</option><option value="task">任务</option><option value="test">测试</option><option value="glossary">术语</option></select>
+<select id="knowledgeSource"><option value="">全部来源</option><option value="human">手动</option><option value="learning">学习</option><option value="compliance">合规</option><option value="guardrail">护栏</option><option value="gate">门禁</option><option value="activate-seed">种子</option></select>
+<button onclick="searchKnowledge()">搜索</button>
+<button onclick="semanticKnowledge()">语义搜索</button>
+<button onclick="evictKnowledge()" style="background:var(--danger);margin-left:8px">淘汰</button>
+</div>
+<div class="table-wrap"><div class="thead"><h3>知识条目</h3><span id="knowledgeCount">0 条</span></div>
+<table><thead><tr><th>ID</th><th>类型</th><th>作用域</th><th>标题</th><th>置信度</th><th>来源</th><th>频次</th><th>创建时间</th></tr></thead><tbody id="knowledgeBody"></tbody></table></div>
+</div>
+</div>
+<!-- Audit Detail Modal -->
+<div class="modal-overlay" id="auditModal" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+<div class="modal-header">
+<h2 id="modalTitle">审计详情</h2>
+<button class="modal-close" onclick="closeModal()">✕</button>
+</div>
+<div class="modal-meta" id="modalMeta"></div>
+<div id="modalBody"></div>
+</div>
+</div>
+<script>
+const API='';
+let refreshTimer=null;
+
+function switchTab(name){
+document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+document.querySelector(`.tabs button[onclick*="${name}"]`).classList.add('active');
+document.getElementById('panel-'+name).classList.add('active');
+loadTab(name);
+}
+
+async function api(path){
+try{
+const r=await fetch(API+path);
+if(!r.ok) throw new Error(r.status);
+return await r.json();
+}catch(e){
+console.error('API error:',e);
+return null;
+}
+}
+
+function fmtTime(ts){
+if(!ts)return'-';
+return new Date(ts).toLocaleString('zh-CN');
+}
+
+function badge(cls,text){return `<span class="badge ${cls}">${text}</span>`}
+
+// --- Stats (新架构指标) ---
+async function loadStats(){
+const d=await api('/api/stats');
+if(!d)return;
+const hookRatePct=(d.hook_success_rate*100).toFixed(1)+'%';
+const gateRatePct=(d.gate_pass_rate*100).toFixed(1)+'%';
+const items=[
+{l:'Hook 执行次数',v:d.total_hook_executions||0,s:d.deployed_hook_count?`已部署 ${d.deployed_hook_count} 个 Hook 点`:'',c:''},
+{l:'Hook 成功率',v:hookRatePct,s:'',c:d.hook_success_rate>=0.9?'green':d.hook_success_rate>=0.7?'yellow':'red'},
+{l:'已部署 Hooks',v:d.deployed_hook_count||0,s:'从 settings.json 读取',c:d.deployed_hook_count>0?'green':'yellow'},
+{l:'Gate 通过率',v:gateRatePct,s:d.total_gate_checks?`共 ${d.total_gate_checks} 次检查`:'暂无检查记录',c:d.gate_pass_rate>=0.9?'green':d.gate_pass_rate>=0.7?'yellow':'red'},
+{l:'审计记录数',v:d.audit_count||0,s:'',c:''},
+{l:'合规扫描',v:d.compliance_scans||0,s:d.compliance_violations?`发现 ${d.compliance_violations} 项违规`:'无违规',c:d.compliance_violations===0?'green':d.compliance_violations>0?'red':''},
+];
+document.getElementById('statsGrid').innerHTML=items.map(i=>`<div class="card"><div class="label">${i.l}</div><div class="value ${i.c}">${i.v}</div><div class="sub">${i.s}</div></div>`).join('');
+
+// Hook 执行分布图
+const hookByType=d.hook_by_type||{};
+const hookLabels=Object.keys(hookByType);
+const hookData=Object.values(hookByType);
+const hookColors=['#f0883e','#3fb950','#58a6ff','#bc8cff','#d29922','#da3633'];
+if(hookLabels.length>0){
+drawChart('chartHooks','bar',
+{labels:hookLabels,datasets:[{label:'执行次数',data:hookData,backgroundColor:hookColors.slice(0,hookLabels.length)}]},
+{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{color:'#8b949e'}},x:{ticks:{color:'#8b949e'}}}}
+);
+}else{
+clearChart('chartHooks');
+}
+
+// Gate 通过率图
+const gatePass=d.total_gate_checks?Math.round(d.gate_pass_rate*100):0;
+const gateFail=100-gatePass;
+drawChart('chartGates','doughnut',
+{labels:['通过','未通过'],datasets:[{data:[gatePass,gateFail],backgroundColor:['#3fb950','#da3633']}]},
+{responsive:true,cutout:'60%',plugins:{legend:{labels:{color:'#8b949e'}}}}
+);
+}
+
+function clearChart(id){
+const el=document.getElementById(id);
+if(!el)return;
+const ctx=el.getContext('2d');
+ctx.clearRect(0,0,el.width,el.height);
+ctx.fillStyle='#8b949e';
+ctx.font='14px sans-serif';
+ctx.textAlign='center';
+ctx.fillText('暂无数据',el.width/2,el.height/2);
+}
+
+// --- Audit ---
+let _auditEntries=[];
+async function searchAudit(){
+const q=document.getElementById('auditQuery').value;
+const a=document.getElementById('auditAgent').value;
+const limit=50;
+const d=await api(`/api/audit/search?query=${encodeURIComponent(q)}&agent_id=${a}&limit=${limit}`);
+_auditEntries=d||[];
+if(!_auditEntries.length){document.getElementById('auditBody').innerHTML='<tr><td colspan="5" class="empty">无记录</td></tr>';document.getElementById('auditCount').textContent='0 条';return;}
+document.getElementById('auditCount').textContent=_auditEntries.length+' 条';
+document.getElementById('auditBody').innerHTML=_auditEntries.map((e,i)=>`<tr class="clickable" onclick="showAuditDetail(${i})">
+<td>${fmtTime(e.timestamp)}</td>
+<td>${e.session_id||'-'}</td>
+<td>${badge('accent',e.agent_id||'-')}</td>
+<td>${(e.task||'-').substring(0,50)}</td>
+<td>${e.outcomes&&Object.keys(e.outcomes).length?badge('green','有结果'):badge('yellow','无')}</td>
+</tr>`).join('');
+}
+
+// --- Audit Detail Modal ---
+function showAuditDetail(idx){
+const e=_auditEntries[idx];
+if(!e)return;
+document.getElementById('modalTitle').textContent=e.task||'审计详情';
+document.getElementById('modalMeta').innerHTML=[
+e.timestamp?`<span>🕐 ${fmtTime(e.timestamp)}</span>`:'',
+e.session_id?`<span>🔑 Session: ${e.session_id}</span>`:'',
+e.agent_id?`<span>🤖 Agent: ${e.agent_id}</span>`:'',
+].filter(Boolean).join('');
+
+let html='';
+// Decisions
+if(e.decisions&&e.decisions.length){
+html+=`<div class="modal-section"><h4>决策链 (${e.decisions.length})</h4>`;
+e.decisions.forEach((d,i)=>{
+html+=`<pre>${JSON.stringify(d,null,2)}</pre>`;
+});
+html+=`</div>`;
+}
+// Actions
+if(e.actions&&e.actions.length){
+html+=`<div class="modal-section"><h4>行动链 (${e.actions.length})</h4>`;
+e.actions.forEach(a=>{
+html+=`<pre><b>${a.tool||'unknown'}</b>\n输入: ${a.input||'-'}\n输出: ${a.output||'-'}${a.duration_ms?'  ('+a.duration_ms+'ms)':''}</pre>`;
+});
+html+=`</div>`;
+}
+// Outcomes
+if(e.outcomes&&Object.keys(e.outcomes).length){
+html+=`<div class="modal-section"><h4>结果</h4><pre>${JSON.stringify(e.outcomes,null,2)}</pre></div>`;
+}
+// Risk Assessment
+if(e.risk_assessment){
+html+=`<div class="modal-section"><h4>风险评估</h4><pre>${JSON.stringify(e.risk_assessment,null,2)}</pre></div>`;
+}
+// Escalation History
+if(e.escalation_history&&e.escalation_history.length){
+html+=`<div class="modal-section"><h4>升级历史</h4>`;
+e.escalation_history.forEach(h=>{
+html+=`<pre>${JSON.stringify(h,null,2)}</pre>`;
+});
+html+=`</div>`;
+}
+if(!html)html='<div class="empty">无详细信息</div>';
+document.getElementById('modalBody').innerHTML=html;
+document.getElementById('auditModal').classList.add('active');
+}
+
+function closeModal(){
+document.getElementById('auditModal').classList.remove('active');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// --- Agents ---
+async function loadAgents(){
+const d=await api('/api/agents');
+if(!d||!d.length){document.getElementById('agentBody').innerHTML='<tr><td colspan="6" class="empty">无注册Agent</td></tr>';return;}
+document.getElementById('agentCount').textContent=d.length;
+const sel=document.getElementById('auditAgent');
+sel.innerHTML='<option value="">全部 Agent</option>';
+d.forEach(a=>{const o=document.createElement('option');o.value=a.id;o.textContent=a.name||a.id;sel.appendChild(o)});
+document.getElementById('agentBody').innerHTML=d.map(a=>`<tr>
+<td>${badge('blue',a.id)}</td>
+<td>${a.name||'-'}</td>
+<td>${badge('purple',a.agent_type||'-')}</td>
+<td>${(a.capabilities||[]).map(c=>badge('accent',c)).join(' ')}</td>
+<td>${a.is_ready?badge('green','就绪'):badge('yellow','待激活')}</td>
+<td>${fmtTime(a.last_used)}</td>
+</tr>`).join('');
+}
+
+// --- Skills ---
+async function loadSkills(){
+const d=await api('/api/skills');
+if(!d)return;
+document.getElementById('skillCount').textContent=d.total+' 个';
+document.getElementById('skillsStats').innerHTML=`
+<div class="card"><div class="label">已注册</div><div class="value green">${d.total}</div></div>
+<div class="card"><div class="label">活跃</div><div class="value">${d.skills.filter(s=>s.active).length}</div></div>
+<div class="card"><div class="label">就绪</div><div class="value">${d.skills.filter(s=>s.is_ready).length}</div></div>
+`;
+document.getElementById('skillBody').innerHTML=d.skills.map(s=>`<tr>
+<td>${badge('blue',s.id)}</td>
+<td>${s.name}</td>
+<td>${badge('purple',s.slot)}</td>
+<td>${(s.tags||[]).map(t=>badge('accent',t)).join(' ')}</td>
+<td>${s.active?badge('green','活跃'):badge('yellow','停用')}</td>
+<td>${s.exec_count||0}</td>
+<td>${s.error_count||0}</td>
+</tr>`).join('');
+const slots=d.slots||{};
+document.getElementById('slotMap').innerHTML=Object.entries(slots).map(([slot,skills])=>`
+<div style="margin-bottom:12px">
+<div style="font-weight:600;color:var(--accent);margin-bottom:4px">${slot}</div>
+<div>${skills.map(s=>badge('blue',s)).join(' ')}</div>
+</div>
+`).join('')||'<div class="empty">无插槽分配</div>';
+}
+
+// --- Profiles ---
+async function loadProfiles(){
+const d=await api('/api/profiles?current=true');
+if(!d)return;
+document.getElementById('currentProfile').textContent=d.active||'-';
+document.getElementById('profileDesc').textContent=d.description||'-';
+const hookSources=d.hook_sources||{};
+const declared=hookSources.profile_declared||[];
+const deployed=hookSources.deployed_active||[];
+document.getElementById('profileStats').innerHTML=`
+<div class="card"><div class="label">默认 Agent</div><div class="value">${d.default_agent||'-'}</div></div>
+<div class="card"><div class="label">Pipeline 步骤</div><div class="value">${(d.pipeline_agents||[]).length}</div><div class="sub">${(d.pipeline_agents||[]).join(' → ')}</div></div>
+<div class="card"><div class="label">Gate 模式</div><div class="value">${d.default_gate_mode||'-'}</div><div class="sub">${(d.gate_checks||[]).length} 个检查项</div></div>
+<div class="card"><div class="label">部署状态</div><div class="value ${deployed.length>0?'green':'yellow'}" style="font-size:16px">${deployed.length>0?'已部署':'未部署'}</div><div class="sub">声明 ${declared.length} 个 / 部署 ${deployed.length} 个 Hook 点</div></div>
+`;
+const hooks=d.hooks||{};
+let hooksRows=[];
+for(const[point,matcherGroups]of Object.entries(hooks)){
+for(const matcherGroup of matcherGroups){
+const actualHooks=matcherGroup.hooks||[];
+const source=matcherGroup._source||'deployed';
+const srcBadge=source==='profile'?badge('yellow','Profile'):badge('green','已部署');
+for(const h of actualHooks){
+hooksRows.push(`<tr>
+<td>${badge('purple',point)}</td>
+<td>${badge('accent',h.type||'-')}</td>
+<td style="font-family:monospace;font-size:12px">${h.command||h.skill_id||h.message||'-'}</td>
+<td>${srcBadge}</td>
+</tr>`);
+}
+}}
+document.getElementById('hooksBody').innerHTML=hooksRows.join('')||'<tr><td colspan="4" class="empty">无 Hooks 配置</td></tr>';
+const gates=d.gate_checks||[];
+document.getElementById('gatesBody').innerHTML=gates.map(g=>`<tr>
+<td>${g.id||'-'}</td>
+<td>${g.enabled?badge('green','启用'):badge('yellow','停用')}</td>
+</tr>`).join('')||'<tr><td colspan="2" class="empty">无 Gate 配置</td></tr>';
+}
+
+// --- Hooks Executions ---
+async function loadHookExecutions(){
+const hookType=document.getElementById('hookTypeFilter').value;
+const d=await api(`/api/hooks/executions?limit=30&hook_type=${hookType}`);
+if(!d||!d.length){document.getElementById('hookExecBody').innerHTML='<tr><td colspan="7" class="empty">无 Hook 执行记录</td></tr>';document.getElementById('hookExecCount').textContent='0 条';return;}
+document.getElementById('hookExecCount').textContent=d.length+' 条';
+document.getElementById('hookExecBody').innerHTML=d.map(h=>{
+const statusBadge=h.status==='success'?badge('green','成功'):h.status==='error'?badge('red','失败'):badge('yellow',h.status||'未知');
+const triggerStr=h.trigger?JSON.stringify(h.trigger).substring(0,60):'-';
+return `<tr>
+<td>${fmtTime(h.timestamp)}</td>
+<td>${h.session_id||'-'}</td>
+<td>${badge('blue',h.hook_name||'-')}</td>
+<td>${badge('accent',h.hook_type||'-')}</td>
+<td>${statusBadge}</td>
+<td>${h.duration_ms?h.duration_ms+'ms':'-'}</td>
+<td style="font-family:monospace;font-size:11px">${triggerStr}</td>
+</tr>`;
+}).join('');
+}
+
+// --- Compliance Rules ---
+async function loadRules(){
+const d=await api('/api/compliance/rules');
+if(!d)return;
+let rows=[];
+for(const[pk,pack]of Object.entries(d)){
+for(const r of pack.rules){
+rows.push(`<tr>
+<td>${badge('accent',pk)}</td>
+<td>${badge('blue',pack.category)}</td>
+<td>${pack.rules_count}</td>
+<td>${r.id}</td>
+<td>${badge(r.severity==='critical'?'red':r.severity==='high'?'yellow':r.severity==='medium'?'accent':'green',r.severity)}</td>
+<td>${r.description}</td>
+<td>${r.auto_fixable?badge('green','是'):badge('yellow','否')}</td>
+</tr>`);
+}}
+document.getElementById('rulesBody').innerHTML=rows.join('');
+}
+
+// --- Scan ---
+async function runScan(){
+const content=document.getElementById('scanInput').value;
+const cat=document.getElementById('scanCat').value;
+if(!content){document.getElementById('scanResults').innerHTML='<div class="empty">请输入内容</div>';return;}
+const d=await api(`/api/compliance/scan?content=${encodeURIComponent(content)}&categories=${cat}`);
+if(!d||!d.length){document.getElementById('scanResults').innerHTML='<div class="empty">扫描通过，无违规</div>';return;}
+document.getElementById('scanResults').innerHTML=d.map(r=>`<div class="result-item">
+<div class="rid">${r.rule_id} ${r.passed?badge('green','通过'):badge('red','违规')}</div>
+<div class="rsev">${badge(r.severity==='critical'?'red':r.severity==='high'?'yellow':'accent',r.severity)}</div>
+<div class="rfind">${(r.findings||[]).join('; ')||'无'}</div>
+${r.remediation?`<div style="margin-top:6px;color:var(--green)">修复: ${r.remediation}</div>`:''}
+</div>`).join('');
+}
+
+// --- Gates ---
+async function loadGates(){
+const d=await api('/api/gates/history?limit=30');
+if(!d||!d.length){document.getElementById('gateBody').innerHTML='<tr><td colspan="5" class="empty">无门禁记录</td></tr>';return;}
+document.getElementById('gateBody').innerHTML=d.map(g=>{
+const resultBadge=g.passed?badge('green','通过'):badge('red','未通过');
+return `<tr>
+<td>${fmtTime(g.timestamp)}</td>
+<td>${g.session_id||'-'}</td>
+<td>${badge('accent',g.gate_id||g.agent_id||'-')}</td>
+<td>${badge('blue',g.gate_mode||'-')}</td>
+<td>${resultBadge}</td>
+</tr>`;
+}).join('');
+}
+
+// --- Events ---
+async function loadEvents(){
+const type=document.getElementById('evtType').value;
+const d=await api(`/api/events?limit=50&event_type=${type}`);
+if(!d||!d.length){document.getElementById('eventStream').innerHTML='<div class="empty">无事件</div>';return;}
+const typeColors={task_started:'accent',task_completed:'green',task_failed:'red',gate_checked:'yellow',compliance_scan:'blue',agent_registered:'purple'};
+document.getElementById('eventStream').innerHTML=d.map(e=>{
+const tc=typeColors[e.type]||'accent';
+return `<div class="event-item">
+<div class="time">${fmtTime(e.timestamp)}</div>
+<div class="etype">${badge(tc,e.type)}</div>
+<div class="edata">ID:${e.execution_id||'-'} Agent:${e.agent_id||'-'} ${(e.data&&typeof e.data==='object')?JSON.stringify(e.data).substring(0,80):''}</div>
+</div>`;
+}).join('');
+}
+
+// --- Health ---
+async function checkHealth(){
+const d=await api('/api/health');
+const dot=document.getElementById('healthDot');
+const txt=document.getElementById('healthText');
+const proj=document.getElementById('headerProject');
+if(d&&d.status==='healthy'){
+dot.className='dot ok';
+txt.textContent=`在线 | ${d.hooks_deployed||0} Hooks | ${d.agents_registered||0} Agent | ${d.audit_entries||0} 审计`;
+if(proj&&d.project_name)proj.textContent=`📁 ${d.project_name}`;
+}else if(d&&d.status==='not_initialized'){
+dot.className='dot warn';
+txt.textContent='未激活';
+if(proj)proj.textContent='⚠️ 当前项目未执行 harness activate';
+}else{
+dot.className='dot err';
+txt.textContent='离线';
+}
+}
+
+// --- Charts ---
+function drawChart(id,type,data,opts){
+const el=document.getElementById(id);
+if(!el)return;
+if(el._chart){el._chart.destroy();}
+el._chart=new Chart(el,{type,data,options:opts});
+}
+
+async function drawCharts(){
+const d=await api('/api/stats');
+if(!d)return;
+
+const hookByType=d.hook_by_type||{};
+const hookLabels=Object.keys(hookByType);
+const hookData=Object.values(hookByType);
+const hookColors=['#f0883e','#3fb950','#58a6ff','#bc8cff','#d29922','#da3633'];
+if(hookLabels.length>0){
+drawChart('chartHooks','bar',
+{labels:hookLabels,datasets:[{label:'执行次数',data:hookData,backgroundColor:hookColors.slice(0,hookLabels.length)}]},
+{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{color:'#8b949e'}},x:{ticks:{color:'#8b949e'}}}}
+);
+}else{
+clearChart('chartHooks');
+}
+
+const gatePass=d.total_gate_checks?Math.round(d.gate_pass_rate*100):0;
+const gateFail=100-gatePass;
+drawChart('chartGates','doughnut',
+{labels:['通过','未通过'],datasets:[{data:[gatePass,gateFail],backgroundColor:['#3fb950','#da3633']}]},
+{responsive:true,cutout:'60%',plugins:{legend:{labels:{color:'#8b949e'}}}}
+);
+}
+
+function loadTab(name){
+switch(name){
+case'overview':loadStats();drawCharts();break;
+case'audit':searchAudit();break;
+case'agents':loadAgents();break;
+case'skills':loadSkills();break;
+case'profiles':loadProfiles();break;
+case'hooks':loadHookExecutions();break;
+case'compliance':loadRules();break;
+case'gates':loadGates();break;
+case'events':loadEvents();break;
+case'knowledge':loadKnowledgeStats();loadKnowledgeList();break;
+}
+}
+
+function startRefresh(){
+checkHealth();
+loadStats();
+loadEvents();
+refreshTimer=setInterval(()=>{checkHealth();loadStats();loadEvents();},5000);
+}
+
+// Load Chart.js
+const script=document.createElement('script');
+script.src='https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+script.onload=()=>{drawCharts()};
+document.head.appendChild(script);
+
+startRefresh();
+
+// ═══════════════════════════════════════════════════
+// 知识库 Tab Functions
+// ═══════════════════════════════════════════════════
+
+async function loadKnowledgeStats(){
+try{
+const r=await fetch(API+'/api/knowledge/stats');
+const d=await r.json();
+const grid=document.getElementById('knowledgeStatsGrid');
+if(!grid)return;
+const items=[
+{label:'活跃条目',value:d.total_entries||0,icon:'📚'},
+{label:'归档条目',value:d.archived_total||0,icon:'🗄️'},
+{label:'高频条目(hit≥3)',value:d.high_freq_entries||0,icon:'🔥'},
+{label:'标签总数',value:d.tags||0,icon:'🏷️'},
+];
+grid.innerHTML=items.map(i=>`<div class="stat-card"><div class="stat-icon">${i.icon}</div><div class="stat-value">${i.value}</div><div class="stat-label">${i.label}</div></div>`).join('');
+}catch(e){console.error('knowledge stats error',e)}
+}
+
+async function loadKnowledgeList(){
+try{
+const type=document.getElementById('knowledgeType').value;
+const source=document.getElementById('knowledgeSource').value;
+const params=new URLSearchParams();
+if(type)params.set('type',type);
+if(source)params.set('source',source);
+params.set('limit','50');
+const r=await fetch(API+'/api/knowledge/list?'+params.toString());
+const d=await r.json();
+document.getElementById('knowledgeCount').textContent=(d.total_matches||0)+' 条';
+const body=document.getElementById('knowledgeBody');
+if(!d.entries||!d.entries.length){body.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text2)">📭 知识库为空</td></tr>';return}
+body.innerHTML=d.entries.map(e=>`<tr>
+<td style="font-family:monospace;font-size:11px">${e.id}</td>
+<td>${e.type}</td>
+<td>${e.scope}</td>
+<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${e.title}</td>
+<td>${(e.confidence||0).toFixed(2)}</td>
+<td>${e.source||'—'}</td>
+<td>${e.hit_count||1}</td>
+<td style="font-size:12px">${e.created_at?e.created_at.slice(0,10):'—'}</td>
+</tr>`).join('');
+}catch(e){console.error('knowledge list error',e)}
+}
+
+async function searchKnowledge(){
+const q=document.getElementById('knowledgeQuery').value;
+const type=document.getElementById('knowledgeType').value;
+if(!q){alert('请输入搜索关键词');return}
+try{
+const params=new URLSearchParams();
+params.set('q',q);
+if(type)params.set('type',type);
+const r=await fetch(API+'/api/knowledge/search?'+params.toString());
+const d=await r.json();
+document.getElementById('knowledgeCount').textContent=(d.total_matches||0)+' 条 (关键词搜索)';
+renderKnowledgeEntries(d.entries||[]);
+}catch(e){alert('搜索失败: '+e)}
+}
+
+async function semanticKnowledge(){
+const q=document.getElementById('knowledgeQuery').value;
+if(!q){alert('请输入语义搜索关键词');return}
+try{
+const r=await fetch(API+'/api/knowledge/semantic?q='+encodeURIComponent(q));
+const d=await r.json();
+document.getElementById('knowledgeCount').textContent=(d.total_matches||0)+' 条 (语义搜索)';
+renderKnowledgeEntries(d.entries||[]);
+}catch(e){alert('语义搜索失败: '+e)}
+}
+
+function renderKnowledgeEntries(entries){
+const body=document.getElementById('knowledgeBody');
+if(!entries.length){body.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text2)">📭 搜索无结果</td></tr>';return}
+body.innerHTML=entries.map(e=>`<tr>
+<td style="font-family:monospace;font-size:11px">${e.id}</td>
+<td>${e.type}</td>
+<td>${e.scope||'—'}</td>
+<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${e.title}</td>
+<td>${(e.confidence||0).toFixed(2)}</td>
+<td>${e.source||'—'}</td>
+<td>${e.hit_count||1}</td>
+<td style="font-size:12px">${e.created_at?e.created_at.slice(0,10):'—'}</td>
+</tr>`).join('');
+}
+
+async function evictKnowledge(){
+if(!confirm('确定触发知识淘汰？30天未查询→归档，90天+低频→删除'))return;
+try{
+const r=await fetch(API+'/api/knowledge/evict',{method:'POST'});
+const d=await r.json();
+alert(`淘汰完成：归档 ${d.archived||0} 条，删除 ${d.deleted||0} 条`);
+loadKnowledgeStats();
+loadKnowledgeList();
+}catch(e){alert('淘汰失败: '+e)}
+}
+
+</script>
+</body>
+</html>

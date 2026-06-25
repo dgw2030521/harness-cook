@@ -1,0 +1,236 @@
+# ═══════════════════════════════════════════════════════════
+#  basex 项目 — harness-cook 示例工作流
+#
+#  3 个典型场景:
+#    1. basex-code-check: 代码合规+质量扫描
+#    2. basex-publish: 构建→检查→发布(带门禁)
+#    3. basex-hotfix: 紧急修复(快速通道,低门禁)
+#
+#  使用:
+#    harness run --workflow workflows/basex-examples.yaml
+#    harness plan --workflow workflows/basex-examples.yaml
+# ═══════════════════════════════════════════════════════════
+
+
+# ─── 场景1: 代码合规+质量扫描 ───
+basex-code-check:
+  description: "basex 代码合规与质量扫描 — 检查10个子包的安全+编码规范"
+
+  nodes:
+    - id: scan-security
+      agent: compliance-checker
+      config:
+        pack_names: [security]
+        scan_paths:
+          - ~/ProjectsOnGitlab/basex/packages/auth/src
+          - ~/ProjectsOnGitlab/basex/packages/core/src
+          - ~/ProjectsOnGitlab/basex/packages/federation/src
+          - ~/ProjectsOnGitlab/basex/packages/request/src
+        # 扫描: XSS/注入/密钥泄露/HTTP不安全/路径遍历/命令注入/调试代码
+
+    - id: scan-coding
+      agent: compliance-checker
+      config:
+        pack_names: [coding]
+        scan_paths:
+          - ~/ProjectsOnGitlab/basex/packages/core/src
+          - ~/ProjectsOnGitlab/basex/packages/sdk/src
+          - ~/ProjectsOnGitlab/basex/packages/theme/src
+        # 扫描: 命名规范/异常处理/布尔复杂度/TODO残留/空catch/魔术数字
+
+    - id: scan-data
+      agent: compliance-checker
+      config:
+        pack_names: [data]
+        scan_paths:
+          - ~/ProjectsOnGitlab/basex/packages/auth/src
+          - ~/ProjectsOnGitlab/basex/packages/permission/src
+          - ~/ProjectsOnGitlab/basex/packages/sso/src
+        # 扫描: PII泄露/邮箱脱敏/手机号脱敏/日志隐私/数据分类
+
+    - id: aggregate-report
+      agent: report-aggregator
+      depends_on: [scan-security, scan-coding, scan-data]
+      config:
+        output_format: summary
+        # 合并三个扫描结果,生成合规报告
+
+  edges:
+    - from_node: scan-security
+      to_node: aggregate-report
+    - from_node: scan-coding
+      to_node: aggregate-report
+    - from_node: scan-data
+      to_node: aggregate-report
+
+  # 无门禁 — 扫描只出报告,不阻断
+
+
+# ─── 场景2: 构建→检查→发布(严格门禁) ───
+basex-publish:
+  description: "basex 发布流程 — 构建→合规→影响分析→审批→发布"
+
+  nodes:
+    - id: build
+      agent: basex-builder
+      config:
+        command: "pnpm build"
+        workdir: ~/ProjectsOnGitlab/basex
+        # pnpm-workspace 构建全部子包
+
+    - id: check-compliance
+      agent: compliance-checker
+      depends_on: [build]
+      config:
+        pack_names: [security, coding, devops]
+        scan_paths:
+          - ~/ProjectsOnGitlab/basex/packages
+
+    - id: impact-analysis
+      agent: impact-analyzer
+      depends_on: [check-compliance]
+      config:
+        project_root: ~/ProjectsOnGitlab/basex
+        # 分析变更影响范围(文件级依赖图)
+
+    - id: typecheck
+      agent: type-checker
+      depends_on: [build]
+      config:
+        command: "pnpm typecheck"
+        workdir: ~/ProjectsOnGitlab/basex
+
+    - id: test
+      agent: test-runner
+      depends_on: [build]
+      config:
+        command: "vitest run"
+        workdir: ~/ProjectsOnGitlab/basex
+
+    - id: gate-review
+      agent: gate-reviewer
+      depends_on: [check-compliance, impact-analysis, typecheck, test]
+      # 汇总所有检查结果,决定是否通过
+
+    - id: deploy
+      agent: deployer
+      depends_on: [gate-review]
+      config:
+        action: publish
+        registry: internal-npm
+
+  edges:
+    - from_node: build
+      to_node: check-compliance
+    - from_node: build
+      to_node: typecheck
+    - from_node: build
+      to_node: test
+    - from_node: check-compliance
+      to_node: impact-analysis
+    - from_node: check-compliance
+      to_node: gate-review
+    - from_node: impact-analysis
+      to_node: gate-review
+    - from_node: typecheck
+      to_node: gate-review
+    - from_node: test
+      to_node: gate-review
+    - from_node: gate-review
+      to_node: deploy
+
+  gates:
+    - node: gate-review
+      mode: strict
+      checks:
+        - id: compliance-pass
+          category: security
+          severity: critical
+          description: "合规扫描无CRITICAL级别违规"
+        - id: impact-low
+          category: architecture
+          severity: high
+          description: "影响分析风险级别不高于MEDIUM"
+        - id: typecheck-pass
+          category: coding
+          severity: high
+          description: "TypeScript类型检查通过"
+        - id: tests-pass
+          category: coding
+          severity: high
+          description: "所有vitest测试通过"
+
+    - node: deploy
+      mode: strict
+      checks:
+        - id: human-approval
+          category: devops
+          severity: critical
+          description: "发布需人工审批确认"
+      # 部署必须人工审批,超时30分钟自动降级为SKIP
+
+  downgrade:
+    gate-review:
+      after_minutes: 15
+      action: abort  # review超时→中止,不给自动通过
+    deploy:
+      after_minutes: 30
+      action: skip    # 部署审批超时→跳过(低风险可接受)
+
+
+# ─── 场景3: 紧急修复(快速通道) ───
+basex-hotfix:
+  description: "basex 紧急修复流程 — 快速通道,宽松门禁"
+
+  nodes:
+    - id: hotfix-build
+      agent: basex-builder
+      config:
+        command: "pnpm build"
+        workdir: ~/ProjectsOnGitlab/basex
+
+    - id: hotfix-check
+      agent: compliance-checker
+      depends_on: [hotfix-build]
+      config:
+        pack_names: [security]  # 紧急修复只做安全扫描,不做编码规范
+        scan_paths:
+          - ~/ProjectsOnGitlab/basex/packages
+
+    - id: hotfix-test
+      agent: test-runner
+      depends_on: [hotfix-build]
+      config:
+        command: "vitest run --related"  # 只跑相关测试,不跑全量
+        workdir: ~/ProjectsOnGitlab/basex
+
+    - id: hotfix-deploy
+      agent: deployer
+      depends_on: [hotfix-check, hotfix-test]
+      config:
+        action: hotfix-deploy
+
+  edges:
+    - from_node: hotfix-build
+      to_node: hotfix-check
+    - from_node: hotfix-build
+      to_node: hotfix-test
+    - from_node: hotfix-check
+      to_node: hotfix-deploy
+    - from_node: hotfix-test
+      to_node: hotfix-deploy
+
+  gates:
+    - node: hotfix-deploy
+      mode: loose
+      checks:
+        - id: security-critical
+          category: security
+          severity: critical
+          description: "安全扫描无CRITICAL违规(高严重度仍需阻断)"
+        # loose模式: 只有critical阻断,其余自动通过
+
+  downgrade:
+    hotfix-deploy:
+      after_minutes: 10
+      action: skip  # 紧急修复审批超时→跳过,快速上线

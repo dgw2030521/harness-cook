@@ -1,0 +1,147 @@
+# harness-cook 企业级 Profile
+# 适用于：企业项目、生产环境、高合规要求场景
+# 特点：严格约束、完整审计、全流程门禁
+#
+# 与 default Profile 的区别：
+#   - Gate 模式：STRICT（所有检查必须通过，否则阻塞）
+#   - Hooks：启用全部核心 hooks（7 个）
+#   - Pipeline：5 步完整流程（分析→实现→审查→验证→提交）
+#   - 约束：严格的安全约束 + 合规扫描 + PII 检测
+#   - 适用场景：企业开发、金融/医疗/政务项目、对外发布
+
+profile:
+  name: enterprise
+  description: 企业级配置——严格约束、完整审计、全流程门禁（适合企业项目和合规场景）
+
+agent:
+  adapter: claude-code
+
+pipeline:
+  agents: [analyst, coder, reviewer, validator, committer]
+  steps:
+    - name: analyze-requirement
+      skill: requirement-analysis
+      hooks_pre:
+        - type: script
+          command: "python3 packages/hooks/hook-session-init.py"
+
+    - name: implement-code
+      skill: code-generation
+      hooks_post:
+        - type: script
+          command: "python3 packages/hooks/hook-compliance-scan.py"
+
+    - name: review-code
+      skill: auto-review
+      hooks_post:
+        - type: skill
+          skill_id: auto-audit
+
+    - name: validate
+      skill: auto-verify
+      hooks_pre:
+        - type: script
+          command: "python3 packages/hooks/hook-compliance-scan.py"
+
+    - name: commit
+      skill: auto-audit
+      hooks_pre:
+        - type: skill
+          skill_id: auto-review
+
+hooks:
+  # ─── 启用全部核心 hooks ──────────────────────────
+
+  # session_start: 初始化 + 安全基线检查
+  session_start:
+    - type: script
+      command: "python3 packages/hooks/hook-session-init.py"
+    - type: prompt
+      message: "严格模式：所有门禁检查必须通过。禁止硬编码密钥、禁止 eval/exec、禁止绕过验证。"
+
+  # session_end: 完整审计报告 + 合规汇总
+  session_end:
+    - type: script
+      command: "python3 packages/hooks/hook-task-audit.py"
+
+  # pre_execute: 输入验证 + 权限检查
+  pre_execute:
+    - type: script
+      command: "python3 packages/hooks/hook-compliance-scan.py"
+
+  # post_execute: 审计记录 + 合规扫描 + PII 检测
+  post_execute:
+    - type: skill
+      skill_id: auto-audit
+
+  # post_tool_use: 结果验证 + 合规扫描
+  post_tool_use:
+    - type: script
+      command: "python3 packages/hooks/hook-compliance-scan.py"
+
+  # on_gate_fail: 自动修复尝试 + 人工升级
+  on_gate_fail:
+    - type: skill
+      skill_id: auto-fix
+
+  # pre_commit: 代码审查 + 测试运行 + commit message 检查
+  pre_commit:
+    - type: skill
+      skill_id: auto-review
+
+  # ─── 企业级额外 hooks ────────────────────────────
+
+  # on_error: 错误记录 + 自动恢复 + 告警
+  on_error:
+    - type: script
+      command: "python3 packages/hooks/hook-compliance-scan.py"
+
+  # on_decision: 决策记录 + 风险评估
+  on_decision:
+    - type: prompt
+      message: "记录决策原因和风险评估。重要决策必须通知团队。"
+
+gates:
+  # ─── STRICT 模式：所有检查必须通过，否则阻塞 ──────
+  default_mode: strict
+  checks:
+    - id: no-secrets          # 禁止硬编码密钥——STRICT 模式下阻断
+      enabled: true
+      severity: high
+
+    - id: no-eval             # 禁止 eval/exec——STRICT 模式下阻断
+      enabled: true
+      severity: high
+
+    - id: no-debug-left       # 禁止遗留调试代码
+      enabled: true
+      severity: medium
+
+    - id: no-todo-left        # 禁止遗留 TODO/FIXME
+      enabled: true
+      severity: low
+
+    - id: require-type-hints  # 要求类型标注
+      enabled: true
+      severity: medium
+
+    - id: require-docstrings  # 要求文档字符串
+      enabled: true
+      severity: low
+
+constraints:
+  # ─── 严格约束 ──────────────────────────────────
+  max_retries: 2              # 最多 2 次重试——严格
+  max_tokens_per_node: 50000  # 节点 token 上限较紧——控制成本
+  timeout_seconds: 300        # 较短的超时——效率优先
+  max_files_modified: 5       # 单次最多修改 5 个文件——控制变更范围
+
+spec_defaults:
+  # ─── 企业级验收标准──全面而严格 ────────────────
+  objective_template: "按企业标准完成任务"
+  acceptance_criteria:
+    - "所有测试通过"
+    - "无硬编码密钥"
+    - "无遗留调试代码"
+    - "关键函数有类型标注和文档"
+    - "API 返回标准状态码"
