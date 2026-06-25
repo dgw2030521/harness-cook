@@ -9,7 +9,7 @@ export default withMermaid(defineConfig({
   // GitHub Pages 部署路径：
   //   根仓库 <user>.github.io            → '/'
   //   子路径 <user>.github.io/<repo>/    → '/<repo>/'
-  base: '/',
+  base: '/harness-cook/',
 
   ignoreDeadLinks: true,
 
